@@ -6,6 +6,8 @@ from database import get_db, init_db, delete_db
 from typing import List, Annotated
 from contextlib import asynccontextmanager
 from schemas import UserCreate, UserRead, ProductCreate, ProductRead, OrderCreate, OrderRead
+from auth import router as auth_router, get_password_hash
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -18,10 +20,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.include_router(auth_router)
+
 
 @app.post("/users/", response_model=UserCreate)
 async def create_user(user: Annotated[UserCreate, Depends()], db: AsyncSession = Depends(get_db)):
-    db_user = User(name=user.name, email=user.email)
+    hashed_password = get_password_hash(user.password)
+    db_user = User(name=user.name, email=user.email, password=hashed_password)
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
